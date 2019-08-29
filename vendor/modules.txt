@@ -14,5 +14,5 @@ github.com/tidwall/gjson
 github.com/tidwall/match
 # github.com/tidwall/pretty v1.0.0
 github.com/tidwall/pretty
-# github.com/whosonfirst/go-whosonfirst-cache v0.1.0
-github.com/whosonfirst/go-whosonfirst-cache
+# github.com/whosonfirst/go-cache v0.0.1
+github.com/whosonfirst/go-cache
