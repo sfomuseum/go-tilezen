@@ -3,12 +3,12 @@ package main
 import (
 	"flag"
 	"github.com/sfomuseum/go-tilezen"
-	"log"
 	"io"
+	"log"
 	"os"
 )
 
-func main(){
+func main() {
 
 	api_key := flag.String("api-key", "", "...")
 	uri := flag.String("uri", "", "")
@@ -38,7 +38,3 @@ func main(){
 	}
 
 }
-
-		
-
-
