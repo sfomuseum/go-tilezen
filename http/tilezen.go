@@ -3,26 +3,27 @@ package http
 import (
 	gohttp "net/http"
 	"github.com/sfomuseum/go-tilezen"
+	"github.com/whosonfirst/go-whosonfirst-cache"	
 	"io"
 )
 
 type TilezenProxyOptions struct {
-
+	Cache cache.Cache
 }
 
-func TilezenProxyHandler(opts *TilezenProxyOptions) (gohttp.Handler, error) {
+func TilezenProxyHandler(proxy_opts *TilezenProxyOptions) (gohttp.Handler, error) {
 
 	fn := func(rsp gohttp.ResponseWriter, req *gohttp.Request) {
 
 		path := req.URL.Path
 
-		t, err := tilezen.ParseURI(path)
+		tile, err := tilezen.ParseURI(path)
 		
 		if err != nil {
 			gohttp.Error(rsp, "Invalid path", gohttp.StatusBadRequest)
 			return
 		}
-		
+
 		q := req.URL.Query()
 
 		api_key := q.Get("api_key")
@@ -32,11 +33,11 @@ func TilezenProxyHandler(opts *TilezenProxyOptions) (gohttp.Handler, error) {
 			return
 		}
 		
-		opts := &tilezen.Options{
+		tilezen_opts := &tilezen.Options{
 			ApiKey: api_key,
 		}
 		
-		t_rsp, err := tilezen.FetchTile(t, opts)
+		t_rsp, err := tilezen.FetchTileWithCache(proxy_opts.Cache, tile, tilezen_opts)
 		
 		if err != nil {
 			gohttp.Error(rsp, err.Error(), gohttp.StatusInternalServerError)						

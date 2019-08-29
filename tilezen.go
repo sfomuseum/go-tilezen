@@ -11,6 +11,7 @@ import (
 	"github.com/paulmach/orb/geojson"
 	"github.com/paulmach/orb/maptile"
 	"github.com/tidwall/gjson"
+	"github.com/whosonfirst/go-whosonfirst-cache"		
 	"io"
 	"io/ioutil"
 	"log"
@@ -28,6 +29,14 @@ type Tile struct {
 	Y int
 	Z int
 	Format string
+}
+
+func (t *Tile) URI() string {
+	return fmt.Sprintf("%d/%d/%d.%s", t.Z, t.X, t.Y, t.Format)
+}
+
+func (t *Tile) String() string {
+	return t.URI()
 }
 
 type Options struct {
@@ -91,6 +100,35 @@ func ParseURI(uri string) (*Tile, error) {
 	return t, nil
 }
 
+func FetchTileWithCache(tile_cache cache.Cache, tile *Tile, opts *Options) (io.ReadCloser, error) {
+
+	cache_key := tile.URI()
+	
+	t_rsp, err := tile_cache.Get(cache_key)
+
+	if err != nil {
+
+		if !cache.IsCacheMiss(err) {
+			return nil, err
+		}
+		
+		t_rsp, err = FetchTile(tile, opts)
+		
+		if err != nil {
+			return nil, err
+		}
+
+		t_rsp, err = tile_cache.Set(cache_key, t_rsp)
+
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return t_rsp, nil
+}
+
+	
 func FetchTile(t *Tile, opts *Options) (io.ReadCloser, error) {
 
 	z := t.Z
