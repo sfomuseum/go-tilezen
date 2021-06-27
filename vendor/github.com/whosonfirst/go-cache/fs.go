@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"github.com/whosonfirst/go-ioutil"
 	"io"
 	_ "log"
 	"net/url"
@@ -29,11 +30,34 @@ type FSCache struct {
 
 func init() {
 	ctx := context.Background()
-	c := NewFSCache()
-	RegisterCache(ctx, "fs", c)
+	RegisterCache(ctx, "fs", NewFSCache)
 }
 
-func NewFSCache() Cache {
+func NewFSCache(ctx context.Context, uri string) (Cache, error) {
+
+	u, err := url.Parse(uri)
+
+	if err != nil {
+		return nil, err
+	}
+
+	root := u.Path
+
+	abs_root, err := filepath.Abs(root)
+
+	if err != nil {
+		return nil, err
+	}
+
+	info, err := os.Stat(abs_root)
+
+	if os.IsNotExist(err) {
+		return nil, errors.New("Root doesn't exist")
+	}
+
+	if !info.IsDir() {
+		return nil, errors.New("Root is not a directory")
+	}
 
 	mu := new(sync.RWMutex)
 
@@ -44,39 +68,10 @@ func NewFSCache() Cache {
 		TTL:            0,
 		FilePerms:      0644,
 		DirectoryPerms: 0755,
+		root:           root,
 	}
 
-	return c
-}
-
-func (c *FSCache) Open(ctx context.Context, uri string) error {
-
-	u, err := url.Parse(uri)
-
-	if err != nil {
-		return err
-	}
-
-	root := u.Path
-
-	abs_root, err := filepath.Abs(root)
-
-	if err != nil {
-		return err
-	}
-
-	info, err := os.Stat(abs_root)
-
-	if os.IsNotExist(err) {
-		return errors.New("Root doesn't exist")
-	}
-
-	if !info.IsDir() {
-		return errors.New("Root is not a directory")
-	}
-
-	c.root = root
-	return nil
+	return c, nil
 }
 
 func (c *FSCache) Close(ctx context.Context) error {
@@ -87,7 +82,7 @@ func (c *FSCache) Name() string {
 	return "fs"
 }
 
-func (c *FSCache) Get(ctx context.Context, key string) (io.ReadCloser, error) {
+func (c *FSCache) Get(ctx context.Context, key string) (io.ReadSeekCloser, error) {
 
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -132,7 +127,7 @@ func (c *FSCache) Get(ctx context.Context, key string) (io.ReadCloser, error) {
 	return fh, nil
 }
 
-func (c *FSCache) Set(ctx context.Context, key string, fh io.ReadCloser) (io.ReadCloser, error) {
+func (c *FSCache) Set(ctx context.Context, key string, fh io.ReadSeekCloser) (io.ReadSeekCloser, error) {
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -179,7 +174,8 @@ func (c *FSCache) Set(ctx context.Context, key string, fh io.ReadCloser) (io.Rea
 		return nil, err
 	}
 
-	return NewReadCloser(b.Bytes()), nil
+	br := bytes.NewReader(b.Bytes())
+	return ioutil.NewReadSeekCloser(br)
 }
 
 func (c *FSCache) Unset(ctx context.Context, key string) error {

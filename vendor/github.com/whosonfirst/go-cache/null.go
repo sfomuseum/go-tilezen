@@ -13,19 +13,14 @@ type NullCache struct {
 
 func init() {
 	ctx := context.Background()
-	c := NewNullCache()
-	RegisterCache(ctx, "null", c)
+	RegisterCache(ctx, "null", NewNullCache)
 }
 
-func NewNullCache() Cache {
+func NewNullCache(ctx context.Context, uri string) (Cache, error) {
 	c := &NullCache{
 		misses: int64(0),
 	}
-	return c
-}
-
-func (c *NullCache) Open(ctx context.Context, uri string) error {
-	return nil
+	return c, nil
 }
 
 func (c *NullCache) Close(ctx context.Context) error {
@@ -36,12 +31,12 @@ func (c *NullCache) Name() string {
 	return "null"
 }
 
-func (c *NullCache) Get(ctx context.Context, key string) (io.ReadCloser, error) {
+func (c *NullCache) Get(ctx context.Context, key string) (io.ReadSeekCloser, error) {
 	atomic.AddInt64(&c.misses, 1)
 	return nil, new(CacheMiss)
 }
 
-func (c *NullCache) Set(ctx context.Context, key string, fh io.ReadCloser) (io.ReadCloser, error) {
+func (c *NullCache) Set(ctx context.Context, key string, fh io.ReadSeekCloser) (io.ReadSeekCloser, error) {
 	return fh, nil
 }
 
